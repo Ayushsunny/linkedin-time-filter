@@ -158,34 +158,48 @@
     z-index: 10;
 } 
 
-/* Enhanced job highlighting styles */
+/* Enhanced job highlighting styles - SUPER VISIBLE */
 .ltf-highlighted-job {
-    border: 2px solid #0073b1 !important;
-    box-shadow: 0 0 15px rgba(0, 115, 177, 0.4) !important;
-    background: rgba(0, 115, 177, 0.02) !important;
+    border: 5px solid #ff0000 !important;
+    box-shadow: 0 0 25px rgba(255, 0, 0, 0.8) !important;
+    background: rgba(255, 0, 0, 0.15) !important;
     position: relative !important;
-    animation: ltf-pulse 2s ease-in-out;
+    animation: ltf-pulse 2s ease-in-out infinite;
+    margin: 12px 0 !important;
+    border-radius: 12px !important;
+    transform: scale(1.03) !important;
 }
 
 .ltf-new-badge {
     position: absolute !important;
-    top: 10px !important;
-    right: 10px !important;
-    background: linear-gradient(135deg, #0073b1, #004182) !important;
+    top: 8px !important;
+    right: 8px !important;
+    background: linear-gradient(135deg, #ff4757, #ff3838) !important;
     color: white !important;
-    padding: 4px 8px !important;
-    border-radius: 12px !important;
-    font-size: 10px !important;
-    font-weight: bold !important;
-    z-index: 1000 !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
-    animation: ltf-bounce 1s ease-in-out;
+    padding: 6px 12px !important;
+    border-radius: 20px !important;
+    font-size: 12px !important;
+    font-weight: 900 !important;
+    z-index: 10000 !important;
+    box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4) !important;
+    animation: ltf-bounce 2s ease-in-out infinite;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+    letter-spacing: 1px !important;
 }
 
 @keyframes ltf-pulse {
-    0% { box-shadow: 0 0 15px rgba(0, 115, 177, 0.4); }
-    50% { box-shadow: 0 0 25px rgba(0, 115, 177, 0.6); }
-    100% { box-shadow: 0 0 15px rgba(0, 115, 177, 0.4); }
+    0% { 
+        box-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
+        transform: scale(1.03);
+    }
+    50% { 
+        box-shadow: 0 0 35px rgba(255, 0, 0, 1.0);
+        transform: scale(1.05);
+    }
+    100% { 
+        box-shadow: 0 0 25px rgba(255, 0, 0, 0.8);
+        transform: scale(1.03);
+    }
 }
 
 @keyframes ltf-bounce {
@@ -225,4 +239,45 @@
     color: rgba(0, 0, 0, 0.6) !important;
     font-size: 12px !important;
     font-weight: normal !important;
+}
+
+/* Selected filter state */
+.ltf-custom-option.ltf-selected {
+    background-color: rgba(0, 115, 177, 0.1) !important;
+    border-left: 3px solid #0073b1 !important;
+}
+
+.ltf-custom-option.ltf-selected .jobs-search-dropdown__option-label-text {
+    color: #0073b1 !important;
+    font-weight: 600 !important;
+}
+
+.ltf-custom-option.ltf-selected .jobs-search-dropdown__option-input {
+    background-color: #0073b1 !important;
+    border-color: #0073b1 !important;
+}
+
+/* Apply button styling */
+.ltf-apply-button {
+    width: calc(100% - 20px) !important;
+    margin: 10px !important;
+    padding: 12px 16px !important;
+    background: linear-gradient(135deg, #0073b1, #005a8b) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.ltf-apply-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 115, 177, 0.3) !important;
+}
+
+.ltf-apply-button:active {
+    transform: translateY(0) !important;
 } 

@@ -13,7 +13,8 @@
         enabled: false,
         notificationsEnabled: false,
         lastTPR: null,
-        savedSearches: []
+        savedSearches: [],
+        checkInterval: 15 // default to 15 minutes
     };
     
     // Extension lifecycle
@@ -74,12 +75,13 @@
     // Settings management
     async function loadSettings() {
         try {
-            const data = await chrome.storage.sync.get(['enabled', 'notificationsEnabled', 'lastTPR']);
+            const data = await chrome.storage.sync.get(['enabled', 'notificationsEnabled', 'lastTPR', 'checkInterval']);
             const localData = await chrome.storage.local.get(['savedSearches']);
             
             settings.enabled = data.enabled !== false;
             settings.notificationsEnabled = data.notificationsEnabled || false;
             settings.lastTPR = data.lastTPR || null;
+            settings.checkInterval = data.checkInterval || 15;
             settings.savedSearches = localData.savedSearches || [];
             
         } catch (error) {
@@ -95,10 +97,10 @@
             
             if (settings.notificationsEnabled) {
                 await chrome.alarms.create(ALARM_NAME, {
-                    delayInMinutes: CHECK_INTERVAL,
-                    periodInMinutes: CHECK_INTERVAL
+                    delayInMinutes: settings.checkInterval,
+                    periodInMinutes: settings.checkInterval
                 });
-                console.log('[LinkedIn Time Filters] Periodic check alarm set for every', CHECK_INTERVAL, 'minutes');
+                console.log('[LinkedIn Time Filters] Periodic check alarm set for every', settings.checkInterval, 'minutes');
             }
         } catch (error) {
             console.error('[LinkedIn Time Filters] Setup periodic check error:', error);

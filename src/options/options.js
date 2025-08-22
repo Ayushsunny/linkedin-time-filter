@@ -241,8 +241,27 @@ function updateUsageChart(usage) {
     
     const sortedUsage = Object.entries(usage)
         .map(([filterKey, data]) => {
-            const filter = TIME_FILTERS.find(f => f.seconds.toString() === filterKey);
-            const label = filter ? filter.label : `${filterKey}s`;
+            // Handle both formats: "r600" and "600"
+            const seconds = parseInt(filterKey.replace('r', ''));
+            let label;
+            
+            if (isNaN(seconds) || seconds <= 0) {
+                // Skip invalid entries completely
+                return null;
+            } else {
+                const filter = TIME_FILTERS.find(f => f.seconds === seconds);
+                if (filter) {
+                    label = filter.label;
+                } else {
+                    // Create label from seconds
+                    if (seconds < 3600) {
+                        label = `${seconds / 60} minutes`;
+                    } else {
+                        label = `${seconds / 3600} hours`;
+                    }
+                }
+            }
+            
             totalUses += data.uses;
             
             if (data.uses > maxUses) {
@@ -252,6 +271,7 @@ function updateUsageChart(usage) {
             
             return { label, uses: data.uses, key: filterKey };
         })
+        .filter(item => item !== null) // Remove null entries
         .sort((a, b) => b.uses - a.uses);
     
     // Update summary cards
@@ -287,10 +307,28 @@ function updateRecentActivity(usage) {
     }
     
     const activityHTML = recent.map(([filter, data]) => {
-        const filterLabel = TIME_FILTERS.find(f => f.seconds.toString() === filter)?.label || filter;
+        // Handle both formats: "r600" and "600"
+        const seconds = parseInt(filter.replace('r', ''));
+        let filterLabel;
+        
+        if (isNaN(seconds)) {
+            filterLabel = 'Unknown filter';
+        } else {
+            const filterObj = TIME_FILTERS.find(f => f.seconds === seconds);
+            if (filterObj) {
+                filterLabel = filterObj.label;
+            } else {
+                if (seconds < 3600) {
+                    filterLabel = `${seconds / 60} minutes`;
+                } else {
+                    filterLabel = `${seconds / 3600} hours`;
+                }
+            }
+        }
+        
         return `<div style="margin: 5px 0; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-            <strong>${filterLabel}</strong><br>
-            <small>Used ${data.uses} times</small>
+            <strong>Past ${filterLabel}</strong><br>
+            <small>Used ${data.uses} time${data.uses === 1 ? '' : 's'}</small>
         </div>`;
     }).join('');
     
@@ -337,7 +375,7 @@ async function updateSavedSearches() {
             
             const time = document.createElement('span');
             time.className = 'search-time';
-            time.textContent = search.tpr ? formatTimeFilter(search.tpr) : 'Any time';
+            time.textContent = search.tpr ? getTimeFilterLabel(search.tpr) : 'Any time';
             searchInfo.appendChild(time);
             
             searchItem.appendChild(searchInfo);
@@ -462,11 +500,11 @@ async function testNotification() {
             throw new Error('Notifications API not available');
         }
         
-        // Simple notification without optional properties that cause issues
+        // Simple notification without icon
         const notificationData = {
             type: 'basic',
-            title: 'LinkedIn Time Filters',
-            message: 'Test notification sent successfully! The extension is working correctly.'
+            title: 'LinkedIn Time Filters Test',
+            message: 'Notification test successful! Extension is working properly.'
         };
         
         console.log('[LinkedIn Time Filters] Creating notification:', notificationData);
@@ -528,6 +566,11 @@ async function clearAnalytics() {
 }
 
 function formatTimeFilter(seconds) {
+    const filter = TIME_FILTERS.find(f => f.seconds === seconds);
+    return filter ? filter.label : `Past ${seconds} seconds`;
+}
+
+function getTimeFilterLabel(seconds) {
     const filter = TIME_FILTERS.find(f => f.seconds === seconds);
     return filter ? filter.label : `Past ${seconds} seconds`;
 }

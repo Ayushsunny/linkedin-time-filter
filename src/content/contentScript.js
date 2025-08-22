@@ -16,8 +16,10 @@
     
     let isEnabled = true;
     let currentFilter = null;
+    let selectedFilter = null; // Track selected but not applied filter
     let observer = null;
     let injectedOptions = [];
+    let applyButton = null;
     
     // Extension state management
     async function loadSettings() {
@@ -151,7 +153,7 @@
         label.appendChild(span);
         option.appendChild(label);
         
-        // Click handler
+        // Click handler - directly apply the filter
         option.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -221,6 +223,12 @@
                         card.appendChild(badge);
                         
                         console.log(`[LinkedIn Time Filters] Highlighted job ${index + 1} (${timeText})`);
+                        
+                        // Force VERY visible highlighting
+                        card.style.setProperty('border', '4px solid #ff0000 !important', 'important');
+                        card.style.setProperty('background-color', 'rgba(255, 0, 0, 0.1) !important', 'important');
+                        card.style.setProperty('box-shadow', '0 0 20px rgba(255, 0, 0, 0.8) !important', 'important');
+                        card.style.setProperty('transform', 'scale(1.02) !important', 'important');
                     }
                 } else {
                     console.log(`[LinkedIn Time Filters] No time element found for job ${index + 1}`);
@@ -228,34 +236,126 @@
             });
             
             // Update analytics
-            updateAnalytics('highlight', seconds);
+            updateAnalytics(`r${seconds}`);
             
         } catch (error) {
             console.error('[LinkedIn Time Filters] Error highlighting jobs:', error);
         }
     }
 
-    // Update the handleFilterClick function to trigger highlighting
+    // Handle filter selection (not applying it yet)
+    function handleFilterSelection(seconds) {
+        try {
+            console.log('[LinkedIn Time Filters] Filter selected:', seconds, 'seconds');
+            
+            selectedFilter = seconds;
+            
+            // Update visual selection
+            updateFilterSelection();
+            
+            // Show/update apply button
+            showApplyButton();
+            
+        } catch (error) {
+            console.error('[LinkedIn Time Filters] Error handling filter selection:', error);
+        }
+    }
+
+    // Apply the selected filter directly
     function handleFilterClick(seconds) {
         try {
-            console.log('[LinkedIn Time Filters] Filter clicked:', seconds, 'seconds');
+            console.log('[LinkedIn Time Filters] Filter applied:', seconds, 'seconds');
             
             // Update URL with f_TPR parameter
             setTPROnUrl(seconds);
             
-            // Store the selected filter
+            // Store the applied filter
             saveSettings({ lastTPR: seconds });
+            currentFilter = seconds;
+            
+            // Update analytics
+            updateAnalytics(`r${seconds}`);
             
             // Highlight jobs after a short delay to let the page update
             setTimeout(() => {
                 highlightJobsInTimeRange(seconds);
-            }, 1000);
+            }, 500);
             
             console.log('[LinkedIn Time Filters] Filter applied successfully');
             
         } catch (error) {
-            console.error('[LinkedIn Time Filters] Error handling filter click:', error);
+            console.error('[LinkedIn Time Filters] Error handling filter application:', error);
         }
+    }
+    
+    function updateFilterSelection() {
+        // Update visual state of filter options
+        injectedOptions.forEach(option => {
+            const isSelected = option.getAttribute('data-custom-filter') === ('r' + selectedFilter);
+            option.classList.toggle('ltf-selected', isSelected);
+        });
+    }
+    
+    function showApplyButton() {
+        if (!applyButton) {
+            createApplyButton();
+        }
+        
+        if (applyButton) {
+            applyButton.style.display = 'block';
+            applyButton.textContent = `Apply ${getFilterLabel(selectedFilter)} filter`;
+        }
+    }
+    
+    function hideApplyButton() {
+        if (applyButton) {
+            applyButton.style.display = 'none';
+        }
+    }
+    
+    function createApplyButton() {
+        const buttonContainer = document.querySelector('.jobs-search-dropdown__dropdown-list')?.parentElement;
+        if (!buttonContainer) return;
+        
+        applyButton = document.createElement('button');
+        applyButton.className = 'ltf-apply-button';
+        applyButton.style.cssText = `
+            width: 100%;
+            padding: 12px 16px;
+            margin: 10px;
+            background: linear-gradient(135deg, #0073b1, #005a8b);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: none;
+        `;
+        
+        applyButton.addEventListener('click', () => {
+            if (selectedFilter) {
+                handleFilterClick(selectedFilter);
+            }
+        });
+        
+        applyButton.addEventListener('mouseenter', () => {
+            applyButton.style.transform = 'translateY(-2px)';
+            applyButton.style.boxShadow = '0 4px 12px rgba(0, 115, 177, 0.3)';
+        });
+        
+        applyButton.addEventListener('mouseleave', () => {
+            applyButton.style.transform = 'translateY(0)';
+            applyButton.style.boxShadow = 'none';
+        });
+        
+        buttonContainer.appendChild(applyButton);
+    }
+    
+    function getFilterLabel(seconds) {
+        const filter = TIME_FILTERS.find(f => f.seconds === seconds);
+        return filter ? filter.label : `${seconds} seconds`;
     }
     
     async function injectCustomFilters() {
@@ -313,6 +413,15 @@
             }
         });
         injectedOptions = [];
+        
+        // Clean up apply button
+        if (applyButton && applyButton.parentNode) {
+            applyButton.parentNode.removeChild(applyButton);
+            applyButton = null;
+        }
+        
+        // Reset selected filter
+        selectedFilter = null;
     }
     
     // Job highlighting functionality
@@ -388,24 +497,29 @@
     }
     
     // Analytics
-    async function updateAnalytics(filter) {
-        const data = await new Promise(resolve => {
-            chrome.storage.local.get(['analytics'], resolve);
-        });
-        
-        const analytics = data.analytics || { usage: {} };
-        const key = filter.value;
-        
-        if (!analytics.usage[key]) {
-            analytics.usage[key] = { uses: 0, lastUsed: Date.now() };
+    async function updateAnalytics(filterKey) {
+        try {
+            const data = await new Promise(resolve => {
+                chrome.storage.local.get(['analytics'], resolve);
+            });
+            
+            const analytics = data.analytics || { usage: {} };
+            
+            if (!analytics.usage[filterKey]) {
+                analytics.usage[filterKey] = { uses: 0, lastUsed: Date.now() };
+            }
+            
+            analytics.usage[filterKey].uses++;
+            analytics.usage[filterKey].lastUsed = Date.now();
+            
+            await new Promise(resolve => {
+                chrome.storage.local.set({ analytics }, resolve);
+            });
+            
+            console.log('[LinkedIn Time Filters] Analytics updated:', filterKey, analytics.usage[filterKey]);
+        } catch (error) {
+            console.error('[LinkedIn Time Filters] Analytics update error:', error);
         }
-        
-        analytics.usage[key].uses++;
-        analytics.usage[key].lastUsed = Date.now();
-        
-        await new Promise(resolve => {
-            chrome.storage.local.set({ analytics }, resolve);
-        });
     }
     
     // MutationObserver for dynamic content
@@ -476,6 +590,16 @@
                     currentFilter: currentFilter,
                     url: window.location.href
                 });
+                break;
+                
+            case 'applyTimeFilter':
+                if (isEnabled && message.seconds) {
+                    console.log('[LinkedIn Time Filters] Applying filter from popup:', message.seconds);
+                    handleFilterClick(message.seconds);
+                    sendResponse({ success: true });
+                } else {
+                    sendResponse({ success: false, error: 'Extension disabled or invalid filter' });
+                }
                 break;
         }
     });
