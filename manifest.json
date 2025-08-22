@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn Enhanced Time Filters",
+  "version": "1.0.0",
+  "description": "Add fine-grained time filters (10m, 30m, 1h, 2h, 6h, 12h) to LinkedIn Jobs search.",
+
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "activeTab",
+    "scripting",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*"
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "LinkedIn Enhanced Time Filters"
+  },
+  "background": {
+    "service_worker": "src/background/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/jobs/search/*"],
+      "js": ["src/content/contentScript.js"],
+      "css": ["src/css/injected.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "src/options/options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["src/css/injected.css"],
+      "matches": ["https://www.linkedin.com/*"]
+    }
+  ]
+} 

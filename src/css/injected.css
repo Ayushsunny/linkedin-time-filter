@@ -1,0 +1,228 @@
+/* LinkedIn Enhanced Time Filters - Injected Styles */
+
+/* Custom filter options - match LinkedIn's native styling */
+.ltf-custom-option {
+    /* Inherit all LinkedIn's existing styles */
+    border: none !important;
+    background: transparent !important;
+}
+
+.ltf-custom-option:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.ltf-custom-option .jobs-search-dropdown__option-label {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+.ltf-custom-option .jobs-search-dropdown__option-input {
+    margin-right: 8px;
+}
+
+.ltf-custom-option .jobs-search-dropdown__option-label-text {
+    font-size: 14px;
+    line-height: 1.4;
+    color: rgba(0, 0, 0, 0.9);
+}
+
+/* Highlighted jobs - subtle visual enhancement */
+.ltf-highlighted-job {
+    position: relative;
+    border-left: 3px solid #0a66c2 !important;
+    background-color: rgba(10, 102, 194, 0.02) !important;
+}
+
+.ltf-highlighted-job::before {
+    content: "NEW";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #0a66c2;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    z-index: 10;
+}
+
+/* Animation for new job highlighting */
+.ltf-highlighted-job {
+    animation: ltf-highlight-pulse 2s ease-in-out;
+}
+
+@keyframes ltf-highlight-pulse {
+    0% {
+        background-color: rgba(10, 102, 194, 0.1);
+        transform: scale(1);
+    }
+    50% {
+        background-color: rgba(10, 102, 194, 0.05);
+        transform: scale(1.01);
+    }
+    100% {
+        background-color: rgba(10, 102, 194, 0.02);
+        transform: scale(1);
+    }
+}
+
+/* Ensure custom options blend seamlessly */
+.jobs-search-dropdown__option.ltf-custom-option {
+    border: none;
+    outline: none;
+}
+
+.jobs-search-dropdown__option.ltf-custom-option:focus,
+.jobs-search-dropdown__option.ltf-custom-option:focus-within {
+    background-color: rgba(0, 0, 0, 0.08) !important;
+    outline: 2px solid #0a66c2;
+    outline-offset: -2px;
+}
+
+/* Visual indicator for active custom filter */
+.ltf-custom-option.ltf-active {
+    background-color: rgba(10, 102, 194, 0.1) !important;
+}
+
+.ltf-custom-option.ltf-active .jobs-search-dropdown__option-input {
+    background-color: #0a66c2;
+    border-color: #0a66c2;
+}
+
+.ltf-custom-option.ltf-active .jobs-search-dropdown__option-label-text {
+    color: #0a66c2;
+    font-weight: 600;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .ltf-highlighted-job::before {
+        font-size: 9px;
+        padding: 1px 4px;
+        top: 4px;
+        right: 4px;
+    }
+    
+    .ltf-custom-option .jobs-search-dropdown__option-label {
+        padding: 6px 8px;
+    }
+    
+    .ltf-custom-option .jobs-search-dropdown__option-label-text {
+        font-size: 13px;
+    }
+} 
+
+/* LinkedIn filter integration */
+.ltf-custom-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: #000;
+}
+
+.ltf-custom-option:hover {
+    background-color: #f3f6f8;
+}
+
+.ltf-custom-option .filter-label {
+    font-weight: 500;
+}
+
+.ltf-custom-option .filter-time {
+    color: #666;
+    font-size: 12px;
+}
+
+/* Job highlighting */
+.ltf-highlighted-job {
+    border: 2px solid #0073b1 !important;
+    box-shadow: 0 0 10px rgba(0, 115, 177, 0.3) !important;
+    position: relative;
+}
+
+.ltf-new-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: #0073b1;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 10;
+} 
+
+/* Enhanced job highlighting styles */
+.ltf-highlighted-job {
+    border: 2px solid #0073b1 !important;
+    box-shadow: 0 0 15px rgba(0, 115, 177, 0.4) !important;
+    background: rgba(0, 115, 177, 0.02) !important;
+    position: relative !important;
+    animation: ltf-pulse 2s ease-in-out;
+}
+
+.ltf-new-badge {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    background: linear-gradient(135deg, #0073b1, #004182) !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+    font-size: 10px !important;
+    font-weight: bold !important;
+    z-index: 1000 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+    animation: ltf-bounce 1s ease-in-out;
+}
+
+@keyframes ltf-pulse {
+    0% { box-shadow: 0 0 15px rgba(0, 115, 177, 0.4); }
+    50% { box-shadow: 0 0 25px rgba(0, 115, 177, 0.6); }
+    100% { box-shadow: 0 0 15px rgba(0, 115, 177, 0.4); }
+}
+
+@keyframes ltf-bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-5px); }
+    60% { transform: translateY(-3px); }
+}
+
+/* LinkedIn filter integration - make custom options look native */
+.ltf-custom-option {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 12px 16px !important;
+    cursor: pointer !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+    transition: background-color 0.2s ease !important;
+    font-size: 14px !important;
+    color: rgba(0, 0, 0, 0.9) !important;
+    background: white !important;
+}
+
+.ltf-custom-option:hover {
+    background-color: #f3f6f8 !important;
+}
+
+.ltf-custom-option:active {
+    background-color: #e8f3ff !important;
+}
+
+.ltf-custom-option .filter-label {
+    font-weight: 500 !important;
+    color: rgba(0, 0, 0, 0.9) !important;
+}
+
+.ltf-custom-option .filter-time {
+    color: rgba(0, 0, 0, 0.6) !important;
+    font-size: 12px !important;
+    font-weight: normal !important;
+} 
