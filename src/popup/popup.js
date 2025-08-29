@@ -147,49 +147,46 @@
         try {
             console.log('[LinkedIn Time Filters] Quick filter applying directly:', seconds, 'seconds');
             
-            // Apply the filter immediately
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                if (tabs[0] && tabs[0].url.includes('linkedin.com/jobs')) {
-                    chrome.tabs.sendMessage(tabs[0].id, {
-                        action: 'applyTimeFilter',
-                        seconds: seconds
-                    }, (response) => {
-                        if (chrome.runtime.lastError) {
-                            console.error('[LinkedIn Time Filters] Message error:', chrome.runtime.lastError);
-                            showError('Content script not responding. Please refresh the LinkedIn page.');
-                            return;
+            // Apply the filter by direct URL navigation (no content script communication needed)
+            chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+                if (tabs[0] && tabs[0].url.includes('linkedin.com/jobs/search')) {
+                    try {
+                        // Build the new URL with f_TPR parameter
+                        const currentUrl = new URL(tabs[0].url);
+                        currentUrl.searchParams.set('f_TPR', 'r' + seconds);
+                        
+                        // Store the applied filter
+                        await chrome.storage.sync.set({ lastTPR: seconds });
+                        currentState.lastTPR = seconds;
+                        
+                        // Update analytics
+                        await updateAnalytics(`r${seconds}`);
+                        
+                        // Navigate directly using chrome.tabs.update (more reliable)
+                        await chrome.tabs.update(tabs[0].id, { url: currentUrl.toString() });
+                        
+                        // Visual feedback - highlight the selected filter button
+                        document.querySelectorAll('.filter-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        
+                        const selectedBtn = document.querySelector(`[data-seconds="${seconds}"]`);
+                        if (selectedBtn) {
+                            selectedBtn.classList.add('active');
                         }
                         
-                        if (response && response.success) {
-                            // Store the applied filter
-                            chrome.storage.sync.set({ lastTPR: seconds });
-                            currentState.lastTPR = seconds;
-                            
-                            // Update analytics
-                            updateAnalytics(`r${seconds}`);
-                            
-                            // Visual feedback - highlight the selected filter button
-                            document.querySelectorAll('.filter-btn').forEach(btn => {
-                                btn.classList.remove('active');
-                            });
-                            
-                            const selectedBtn = document.querySelector(`[data-seconds="${seconds}"]`);
-                            if (selectedBtn) {
-                                selectedBtn.classList.add('active');
-                            }
-                            
-                            // Show success and close popup
-                            const filterLabel = formatTimeFilter(seconds);
-                            showSuccess(`Applied ${filterLabel} filter successfully!`);
-                            
-                            setTimeout(() => window.close(), 1200);
-                            
-                        } else {
-                            showError(response?.error || 'Failed to apply filter. Please try again.');
-                        }
-                    });
+                        // Show success and close popup
+                        const filterLabel = formatTimeFilter(seconds);
+                        showSuccess(`Applied ${filterLabel} filter successfully!`);
+                        
+                        setTimeout(() => window.close(), 1200);
+                        
+                    } catch (error) {
+                        console.error('[LinkedIn Time Filters] Navigation error:', error);
+                        showError('Failed to apply filter: ' + error.message);
+                    }
                 } else {
-                    showError('Please navigate to LinkedIn jobs page first');
+                    showError('Please navigate to LinkedIn job search page first');
                 }
             });
             
@@ -211,36 +208,32 @@
             
             console.log('[LinkedIn Time Filters] Applying last filter:', lastTPR, 'seconds');
             
-            // Send message to content script to apply the filter
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                if (tabs[0] && tabs[0].url.includes('linkedin.com/jobs')) {
-                    chrome.tabs.sendMessage(tabs[0].id, {
-                        action: 'applyTimeFilter',
-                        seconds: lastTPR
-                    }, (response) => {
-                        if (chrome.runtime.lastError) {
-                            console.error('[LinkedIn Time Filters] Message error:', chrome.runtime.lastError);
-                            showError('Content script not responding. Please refresh the LinkedIn page.');
-                            return;
-                        }
+            // Apply filter by direct URL navigation (no content script communication needed)
+            chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+                if (tabs[0] && tabs[0].url.includes('linkedin.com/jobs/search')) {
+                    try {
+                        // Build the new URL with f_TPR parameter
+                        const currentUrl = new URL(tabs[0].url);
+                        currentUrl.searchParams.set('f_TPR', 'r' + lastTPR);
                         
-                        if (response && response.success) {
-                            // Update analytics
-                            updateAnalytics(`r${lastTPR}`);
-                            
-                            // Show success
-                            const filterLabel = formatTimeFilter(lastTPR);
-                            showSuccess(`Applied ${filterLabel} filter successfully!`);
-                            
-                            setTimeout(() => window.close(), 1200);
-                            
-                        } else {
-                            showError(response?.error || 'Failed to apply filter. Please try again.');
-                        }
-                    });
-                    
+                        // Update analytics
+                        await updateAnalytics(`r${lastTPR}`);
+                        
+                        // Navigate directly using chrome.tabs.update
+                        await chrome.tabs.update(tabs[0].id, { url: currentUrl.toString() });
+                        
+                        // Show success
+                        const filterLabel = formatTimeFilter(lastTPR);
+                        showSuccess(`Applied ${filterLabel} filter successfully!`);
+                        
+                        setTimeout(() => window.close(), 1200);
+                        
+                    } catch (error) {
+                        console.error('[LinkedIn Time Filters] Navigation error:', error);
+                        showError('Failed to apply filter: ' + error.message);
+                    }
                 } else {
-                    showError('Please navigate to LinkedIn jobs page first');
+                    showError('Please navigate to LinkedIn job search page first');
                 }
             });
             
@@ -254,32 +247,30 @@
         try {
             console.log('[LinkedIn Time Filters] Clearing active filter');
             
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                if (tabs[0] && tabs[0].url.includes('linkedin.com/jobs')) {
-                    chrome.tabs.sendMessage(tabs[0].id, {
-                        action: 'clearFilter'
-                    }, (response) => {
-                        if (chrome.runtime.lastError) {
-                            console.error('[LinkedIn Time Filters] Message error:', chrome.runtime.lastError);
-                            showError('Content script not responding. Please refresh the LinkedIn page.');
-                            return;
-                        }
+            chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+                if (tabs[0] && tabs[0].url.includes('linkedin.com/jobs/search')) {
+                    try {
+                        // Clear filter by direct URL navigation (no content script communication needed)
+                        const currentUrl = new URL(tabs[0].url);
+                        currentUrl.searchParams.delete('f_TPR');
                         
-                        if (response && response.success) {
-                            // Clear active filter from UI
-                            document.querySelectorAll('.filter-btn').forEach(btn => {
-                                btn.classList.remove('active');
-                            });
-                            
-                            showSuccess('Filter cleared successfully!');
-                            setTimeout(() => window.close(), 1200);
-                            
-                        } else {
-                            showError('Failed to clear filter. Please try again.');
-                        }
-                    });
+                        // Navigate directly using chrome.tabs.update
+                        await chrome.tabs.update(tabs[0].id, { url: currentUrl.toString() });
+                        
+                        // Clear active filter from UI
+                        document.querySelectorAll('.filter-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        
+                        showSuccess('Filter cleared successfully!');
+                        setTimeout(() => window.close(), 1200);
+                        
+                    } catch (error) {
+                        console.error('[LinkedIn Time Filters] Clear filter error:', error);
+                        showError('Failed to clear filter: ' + error.message);
+                    }
                 } else {
-                    showError('Please navigate to LinkedIn jobs page first');
+                    showError('Please navigate to LinkedIn job search page first');
                 }
             });
             
@@ -309,7 +300,7 @@
     async function checkLinkedInPage() {
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            currentState.onLinkedInPage = tab && tab.url.includes('linkedin.com/jobs');
+            currentState.onLinkedInPage = tab && tab.url.includes('linkedin.com/jobs/search');
             
             if (currentState.onLinkedInPage) {
                 // Try to get status from content script
