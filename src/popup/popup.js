@@ -50,6 +50,7 @@
             lastFilter: document.getElementById('lastFilter'),
             lastFilterText: document.getElementById('lastFilterText'),
             applyLastBtn: document.getElementById('applyLastBtn'),
+            clearFilterBtn: document.getElementById('clearFilterBtn'),
             stats: document.getElementById('stats'),
             totalUsage: document.getElementById('totalUsage'),
             mostUsed: document.getElementById('mostUsed')
@@ -107,6 +108,9 @@
         
         // Apply last filter button
         elements.applyLastBtn.addEventListener('click', handleApplyLast);
+        
+        // Clear filter button
+        elements.clearFilterBtn.addEventListener('click', handleClearFilter);
         
         // Advanced settings button
         const advancedSettingsBtn = document.getElementById('advancedSettingsBtn');
@@ -246,6 +250,45 @@
         }
     }
     
+    function handleClearFilter() {
+        try {
+            console.log('[LinkedIn Time Filters] Clearing active filter');
+            
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                if (tabs[0] && tabs[0].url.includes('linkedin.com/jobs')) {
+                    chrome.tabs.sendMessage(tabs[0].id, {
+                        action: 'clearFilter'
+                    }, (response) => {
+                        if (chrome.runtime.lastError) {
+                            console.error('[LinkedIn Time Filters] Message error:', chrome.runtime.lastError);
+                            showError('Content script not responding. Please refresh the LinkedIn page.');
+                            return;
+                        }
+                        
+                        if (response && response.success) {
+                            // Clear active filter from UI
+                            document.querySelectorAll('.filter-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            
+                            showSuccess('Filter cleared successfully!');
+                            setTimeout(() => window.close(), 1200);
+                            
+                        } else {
+                            showError('Failed to clear filter. Please try again.');
+                        }
+                    });
+                } else {
+                    showError('Please navigate to LinkedIn jobs page first');
+                }
+            });
+            
+        } catch (error) {
+            console.error('[LinkedIn Time Filters] Clear filter error:', error);
+            showError('Failed to clear filter: ' + error.message);
+        }
+    }
+    
     async function updateAnalytics(filterValue) {
         if (!currentState.analytics.usage[filterValue]) {
             currentState.analytics.usage[filterValue] = { uses: 0, lastUsed: Date.now() };
@@ -333,6 +376,13 @@
             elements.lastFilterText.textContent = 'No filter used yet';
             elements.applyLastBtn.classList.add('disabled');
             elements.applyLastBtn.textContent = 'No Last Filter';
+        }
+        
+        // Update clear button visibility  
+        if (currentState.enabled && currentState.onLinkedInPage) {
+            elements.clearFilterBtn.classList.remove('disabled');
+        } else {
+            elements.clearFilterBtn.classList.add('disabled');
         }
         
         // Statistics

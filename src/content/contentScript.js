@@ -20,13 +20,29 @@
     let observer = null;
     let injectedOptions = [];
     let applyButton = null;
+    let sessionActive = true; // Track if current session should keep filters
+    let lastJobSearchUrl = null; // Track job search context
     
     // Extension state management
     async function loadSettings() {
         return new Promise((resolve) => {
             chrome.storage.sync.get(['enabled', 'lastTPR'], (data) => {
                 isEnabled = data.enabled !== false; // Default to true
-                currentFilter = data.lastTPR || null;
+                
+                // Only restore currentFilter if we're in the same job search session
+                const currentUrl = window.location.href;
+                const isJobSearchPage = currentUrl.includes('/jobs/search') || currentUrl.includes('/jobs/');
+                const hasActiveFilter = currentUrl.includes('f_TPR=');
+                
+                // Only restore filter if we're on a job search page with an active filter
+                if (isJobSearchPage && hasActiveFilter) {
+                    const urlTPR = extractTPRFromUrl();
+                    currentFilter = urlTPR || null;
+                } else {
+                    currentFilter = null; // Reset for new session
+                }
+                
+                lastJobSearchUrl = isJobSearchPage ? currentUrl : null;
                 resolve(data);
             });
         });
@@ -38,26 +54,81 @@
         });
     }
     
+    // Extract TPR value from current URL
+    function extractTPRFromUrl() {
+        const url = new URL(window.location.href);
+        const tprParam = url.searchParams.get('f_TPR');
+        if (tprParam && tprParam.startsWith('r')) {
+            return parseInt(tprParam.substring(1));
+        }
+        return null;
+    }
+    
+    // Session cleanup functions
+    function clearSessionState() {
+        console.log('[LinkedIn Time Filters] Clearing session state');
+        currentFilter = null;
+        selectedFilter = null;
+        sessionActive = false;
+        removeInjectedOptions();
+        clearJobHighlights();
+    }
+    
+    function clearJobHighlights() {
+        document.querySelectorAll('.ltf-highlighted-job').forEach(el => {
+            el.classList.remove('ltf-highlighted-job');
+            el.style.removeProperty('border');
+            el.style.removeProperty('background-color');
+            el.style.removeProperty('box-shadow');
+            el.style.removeProperty('transform');
+        });
+        
+        document.querySelectorAll('.ltf-new-badge').forEach(badge => {
+            badge.remove();
+        });
+    }
+    
+    // Check if we're still in a valid job search context
+    function isInJobSearchContext() {
+        const url = window.location.href;
+        
+        // Only consider active job search pages, not individual job views or recent jobs
+        return url.includes('/jobs/search') && !url.includes('/jobs/view/') && !url.includes('/jobs/collections/');
+    }
+    
+    // Enhanced context detection - should clear filters when navigating to these contexts
+    function shouldClearFilters() {
+        const url = window.location.href;
+        
+        // Clear filters when navigating to:
+        return (
+            url.includes('/jobs/view/') ||          // Individual job page
+            url.includes('/jobs/collections/') ||   // Recent jobs, saved jobs, etc.
+            url.includes('/feed/') ||               // LinkedIn feed
+            url.includes('/in/') ||                 // Profile pages  
+            url.includes('/company/') ||            // Company pages
+            url.includes('/messaging/') ||          // Messages
+            !url.includes('/jobs') ||               // Not on jobs section at all
+            (url.includes('/jobs/') && !url.includes('/jobs/search')) // Other job pages but not search
+        );
+    }
+    
     // URL manipulation for LinkedIn search filters
     function setTPROnUrl(seconds) {
         const url = new URL(window.location.href);
         url.searchParams.set('f_TPR', 'r' + seconds);
         
-        // Use history.pushState to avoid page reload, then trigger LinkedIn's update
-        history.pushState(null, '', url.toString());
-        
-        // Trigger LinkedIn's internal routing/filtering
-        window.dispatchEvent(new PopStateEvent('popstate'));
-        
-        // Alternative: Force page navigation if SPA routing doesn't work
-        // window.location.href = url.toString();
+        // Force proper navigation to ensure LinkedIn processes the filter
+        // This will cause a page reload but ensures filter works correctly
+        window.location.href = url.toString();
     }
     
     function removeTPRFromUrl() {
         const url = new URL(window.location.href);
         url.searchParams.delete('f_TPR');
-        history.pushState(null, '', url.toString());
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        
+        // Force proper navigation to ensure LinkedIn clears the filter
+        window.location.href = url.toString();
     }
     
     // DOM manipulation and injection
@@ -266,20 +337,18 @@
         try {
             console.log('[LinkedIn Time Filters] Filter applied:', seconds, 'seconds');
             
-            // Update URL with f_TPR parameter
-            setTPROnUrl(seconds);
-            
-            // Store the applied filter
+            // Store user preference for "Apply Last" feature
             saveSettings({ lastTPR: seconds });
+            
+            // Set session state
             currentFilter = seconds;
+            sessionActive = true;
             
             // Update analytics
             updateAnalytics(`r${seconds}`);
             
-            // Highlight jobs after a short delay to let the page update
-            setTimeout(() => {
-                highlightJobsInTimeRange(seconds);
-            }, 500);
+            // Update URL with f_TPR parameter (this will cause navigation)
+            setTPROnUrl(seconds);
             
             console.log('[LinkedIn Time Filters] Filter applied successfully');
             
@@ -424,6 +493,20 @@
         selectedFilter = null;
     }
     
+    // Add clear filter functionality
+    function clearCurrentFilter() {
+        console.log('[LinkedIn Time Filters] Clearing current filter');
+        
+        // Clear session state
+        clearSessionState();
+        
+        // Remove f_TPR from URL if present
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('f_TPR')) {
+            removeTPRFromUrl();
+        }
+    }
+    
     // Job highlighting functionality
     function highlightNewJobs(selectedSeconds) {
         try {
@@ -522,6 +605,58 @@
         }
     }
     
+    // Detect when user performs a new search
+    function detectNewSearch() {
+        // Monitor search input changes
+        const searchInputs = document.querySelectorAll('input[aria-label*="Search"], input[placeholder*="Search"], input[data-tracking*="keyword"]');
+        
+        searchInputs.forEach(input => {
+            if (!input.hasAttribute('data-ltf-monitored')) {
+                input.setAttribute('data-ltf-monitored', 'true');
+                
+                // Listen for search submission
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && input.value.trim() && sessionActive) {
+                        console.log('[LinkedIn Time Filters] New search detected, clearing filters');
+                        clearSessionState();
+                    }
+                });
+                
+                // Listen for input changes (when user types and submits)
+                let searchTimeout;
+                input.addEventListener('input', () => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        if (sessionActive && input.value.trim()) {
+                            // Check if this resulted in a new search by monitoring URL changes
+                            const currentUrl = window.location.href;
+                            setTimeout(() => {
+                                if (window.location.href !== currentUrl && window.location.href.includes('keywords=')) {
+                                    console.log('[LinkedIn Time Filters] New search submission detected, clearing filters');
+                                    clearSessionState();
+                                }
+                            }, 1000);
+                        }
+                    }, 500);
+                });
+            }
+        });
+        
+        // Monitor search form submissions
+        const searchForms = document.querySelectorAll('form[data-tracking*="search"], .jobs-search-box');
+        searchForms.forEach(form => {
+            if (!form.hasAttribute('data-ltf-monitored')) {
+                form.setAttribute('data-ltf-monitored', 'true');
+                form.addEventListener('submit', (e) => {
+                    if (sessionActive) {
+                        console.log('[LinkedIn Time Filters] Search form submitted, clearing filters');
+                        clearSessionState();
+                    }
+                });
+            }
+        });
+    }
+
     // MutationObserver for dynamic content
     function setupMutationObserver() {
         if (observer) {
@@ -530,6 +665,7 @@
         
         observer = new MutationObserver((mutations) => {
             let shouldReinject = false;
+            let shouldDetectSearch = false;
             
             mutations.forEach(mutation => {
                 if (mutation.addedNodes.length > 0) {
@@ -543,6 +679,17 @@
                             )) {
                                 shouldReinject = true;
                             }
+                            
+                            // Check if new search inputs were added
+                            if (node.matches && (
+                                node.matches('input[aria-label*="Search"]') ||
+                                node.matches('input[placeholder*="Search"]') ||
+                                node.matches('.jobs-search-box') ||
+                                node.querySelector('input[aria-label*="Search"]') ||
+                                node.querySelector('.jobs-search-box')
+                            )) {
+                                shouldDetectSearch = true;
+                            }
                         }
                     });
                 }
@@ -550,6 +697,10 @@
             
             if (shouldReinject && isEnabled) {
                 setTimeout(() => injectCustomFilters(), 100);
+            }
+            
+            if (shouldDetectSearch) {
+                setTimeout(() => detectNewSearch(), 200);
             }
         });
         
@@ -601,8 +752,101 @@
                     sendResponse({ success: false, error: 'Extension disabled or invalid filter' });
                 }
                 break;
+                
+            case 'cleanup':
+                console.log('[LinkedIn Time Filters] Cleanup requested from background');
+                clearSessionState();
+                sendResponse({ success: true });
+                break;
+                
+            case 'clearFilter':
+                console.log('[LinkedIn Time Filters] Clear filter requested');
+                clearCurrentFilter();
+                sendResponse({ success: true });
+                break;
         }
     });
+    
+    // Setup cleanup listeners for proper session management
+    function setupCleanupListeners() {
+        // Clear session state when user navigates away or closes tab
+        window.addEventListener('beforeunload', () => {
+            clearSessionState();
+        });
+        
+        // Monitor URL changes (for SPA navigation)
+        let currentUrl = window.location.href;
+        const urlCheckInterval = setInterval(() => {
+            if (window.location.href !== currentUrl) {
+                const oldUrl = currentUrl;
+                currentUrl = window.location.href;
+                
+                console.log('[LinkedIn Time Filters] URL changed from', oldUrl, 'to', currentUrl);
+                
+                // Enhanced clearing logic - clear filters when user navigates to different contexts
+                if (shouldClearFilters()) {
+                    console.log('[LinkedIn Time Filters] Navigated to different context, clearing session');
+                    clearSessionState();
+                    return; // Exit early, no need to continue monitoring
+                }
+                
+                // If we're no longer in job search context, clear session
+                if (!isInJobSearchContext()) {
+                    console.log('[LinkedIn Time Filters] Left job search context, clearing session');
+                    clearSessionState();
+                    clearInterval(urlCheckInterval);
+                    return;
+                }
+                
+                // If URL changed but no f_TPR parameter, user manually cleared filters
+                if (!currentUrl.includes('f_TPR=') && currentFilter) {
+                    console.log('[LinkedIn Time Filters] User manually cleared filters, clearing session');
+                    clearSessionState();
+                }
+                // Update current filter based on URL
+                else {
+                    const urlTPR = extractTPRFromUrl();
+                    if (urlTPR !== currentFilter) {
+                        console.log('[LinkedIn Time Filters] Filter changed via URL from', currentFilter, 'to', urlTPR);
+                        currentFilter = urlTPR;
+                    }
+                }
+            }
+        }, 1000);
+        
+        // Clear session state when extension is disabled
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message.action === 'toggle' && !message.enabled) {
+                clearSessionState();
+            }
+        });
+        
+        // Monitor visibility changes (tab switches)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // Tab became visible again, check if we should clear filters
+                if ((shouldClearFilters() || !isInJobSearchContext()) && sessionActive) {
+                    console.log('[LinkedIn Time Filters] Tab visible but not in job search context, clearing session');
+                    clearSessionState();
+                }
+            }
+        });
+        
+        // Also monitor for hash changes and popstate events (browser back/forward)
+        window.addEventListener('popstate', () => {
+            if (shouldClearFilters() && sessionActive) {
+                console.log('[LinkedIn Time Filters] Popstate detected, not in job search context, clearing session');
+                clearSessionState();
+            }
+        });
+        
+        window.addEventListener('hashchange', () => {
+            if (shouldClearFilters() && sessionActive) {
+                console.log('[LinkedIn Time Filters] Hash change detected, not in job search context, clearing session');
+                clearSessionState();
+            }
+        });
+    }
     
     // Initialize
     async function init() {
@@ -621,6 +865,10 @@
             }
             
             setupMutationObserver();
+            setupCleanupListeners(); // Add cleanup listeners
+            
+            // Set up search detection
+            setTimeout(() => detectNewSearch(), 1500);
             
             // Apply current filter highlighting if any
             if (currentFilter) {

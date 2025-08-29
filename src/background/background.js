@@ -371,6 +371,42 @@
         }
     });
     
+    // Tab management for cleanup
+    chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+        console.log('[LinkedIn Time Filters] Tab closed:', tabId);
+        // The content script will handle its own cleanup via beforeunload
+        // This is just for logging/potential future functionality
+    });
+    
+    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+        // Enhanced detection for when user should have filters cleared
+        if (changeInfo.url && tab.url) {
+            const url = tab.url;
+            
+            // Clear filters when navigating to any of these contexts
+            const shouldClear = (
+                !url.includes('linkedin.com/jobs') ||           // Left LinkedIn jobs entirely
+                url.includes('/jobs/view/') ||                  // Individual job page  
+                url.includes('/jobs/collections/') ||           // Recent jobs, saved jobs
+                url.includes('/feed/') ||                       // LinkedIn feed
+                url.includes('/in/') ||                         // Profile pages
+                url.includes('/company/') ||                    // Company pages
+                url.includes('/messaging/') ||                  // Messages
+                (url.includes('/jobs/') && !url.includes('/jobs/search')) // Other job pages
+            );
+            
+            if (shouldClear) {
+                console.log('[LinkedIn Time Filters] User navigated to context where filters should be cleared:', url);
+                // Send cleanup message to any remaining content scripts
+                try {
+                    await chrome.tabs.sendMessage(tabId, { action: 'cleanup' });
+                } catch (error) {
+                    // Content script may not be present, ignore error
+                }
+            }
+        }
+    });
+    
     // Initialize on load
     loadSettings();
     

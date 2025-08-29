@@ -195,6 +195,16 @@
             cursor: not-allowed;
         }
 
+        #clearFilterBtn:hover {
+            background: rgba(220, 53, 69, 0.1) !important;
+        }
+
+        #clearFilterBtn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
         .stats {
             background: white;
             border-radius: 12px;
@@ -298,7 +308,10 @@
         </div>
 
         <div class="quick-filters" id="quickFilters" style="display: none;">
-            <h3>Quick Time Filters</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0;">Quick Time Filters</h3>
+                <button id="clearFilterBtn" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: all 0.2s;">clear</button>
+            </div>
             <div class="filter-grid">
                 <div class="filter-btn" data-seconds="600" data-label="10 minutes">10 min</div>
                 <div class="filter-btn" data-seconds="1800" data-label="30 minutes">30 min</div>
