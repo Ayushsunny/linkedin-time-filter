@@ -4,6 +4,10 @@
   "version": "1.0.0",
   "description": "Add fine-grained time filters (10m, 30m, 1h, 2h, 6h, 12h) to LinkedIn Jobs search.",
 
+  "icons": {
+    "128": "icons/icon128.png"
+  },
+
   "permissions": [
     "storage",
     "alarms",
